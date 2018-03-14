@@ -1,0 +1,15 @@
+Implement Tree Compation
+Add tree patching/layering
+
+
+Tree
+  Add Voxel count
+  Add Accessor for Tree
+  Add Iterator
+  Add Slice
+  Add Reader and Writer
+  Add Clear
+  Add Empty
+
+Succinct
+  Allow more flexable memory allocations
