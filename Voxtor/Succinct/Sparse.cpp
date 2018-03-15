@@ -26,10 +26,10 @@ namespace Succinct{
     return segment;
   }
 
-  L0Segment* Sparse::FindSegment(uint64_t &pos)const{
-    L0Segment *curSegment=mRoot;
+  L0Segment* Sparse::FindSegment(L0Segment *curSegment,uint64_t &subCount,uint64_t &pos)const{
 
     while(curSegment!=nullptr&&curSegment->mBitCount<pos){
+      subCount+=curSegment->mBitCount;
       pos-=curSegment->mBitCount;
       curSegment=curSegment->mNextSegment;
     }
@@ -83,11 +83,18 @@ namespace Succinct{
     }
   }
 
-  uint64_t Sparse::Rank(uint64_t pos)const{
+  uint64_t Sparse::Rank(uint64_t pos,Cache *c)const{
     if(pos>=mBitCount)
       throw std::range_error("Succinct::Sparse::Rank: position exceeds upper bounds of bit array");
 
-    L0Segment *curSegment=FindSegment(pos);
+    uint64_t global;
+    L0Segment *curSegment;
+
+    CacheVars(c,global,pos,curSegment);
+
+    curSegment=FindSegment(curSegment,global,pos);
+
+    CacheAssign(c,global,pos,curSegment);
 
     return curSegment->Rank(pos);
   }
@@ -107,42 +114,68 @@ namespace Succinct{
     return rollPosition+curSegment->Select(count);
   }
 
-  void Sparse::Set(uint64_t pos){
+  void Sparse::Set(uint64_t pos,Cache *c){
     if(pos>=mBitCount)
       throw std::range_error("Succinct::Sparse::Set: position exceeds upper bounds of bit array");
 
-    L0Segment *curSegment=FindSegment(pos);
+    uint64_t global;
+    L0Segment *curSegment;
+
+    CacheVars(c,global,pos,curSegment);
+
+    curSegment=FindSegment(curSegment,global,pos);
 
     curSegment->Set(pos);
 
     mRevision++;
+
+    CacheAssign(c,global,pos,curSegment);
   }
 
-  void Sparse::Clear(uint64_t pos){
+  void Sparse::Clear(uint64_t pos,Cache *c){
     if(pos>=mBitCount)
       throw std::range_error("Succinct::Sparse::Clear: position exceeds upper bounds of bit array");
 
-    L0Segment *curSegment=FindSegment(pos);
+    uint64_t global;
+    L0Segment *curSegment;
+
+    CacheVars(c,global,pos,curSegment);
+
+    curSegment=FindSegment(curSegment,global,pos);
 
     curSegment->Clear(pos);
 
     mRevision++;
+
+    CacheAssign(c,global,pos,curSegment);
   }
 
-  bool Sparse::Get(uint64_t pos)const{
+  bool Sparse::Get(uint64_t pos,Cache *c)const{
     if(pos>=mBitCount)
       throw std::range_error("Succinct::Sparse::Get: position exceeds upper bounds of bit array");
 
-    L0Segment *curSegment=FindSegment(pos);
+    uint64_t global;
+    L0Segment *curSegment;
+
+    CacheVars(c,global,pos,curSegment);
+
+    L0Segment *curSegment=FindSegment(mRoot,global,pos);
+
+    CacheAssign(c,global,pos,curSegment);
 
     return curSegment->Get(pos);
   }
 
-  void Sparse::Insert(uint64_t pos,size_t ammount,uint64_t value){
+  void Sparse::Insert(uint64_t pos,size_t ammount,uint64_t value,Cache *c){
     if(pos>mBitCount)
       throw std::range_error("Succinct::Sparse::Insert: position exceeds upper bounds of bit array");
 
-    L0Segment *curSegment=FindSegment(pos);
+    uint64_t global;
+    L0Segment *curSegment;
+
+    CacheVars(c,global,pos,curSegment);
+
+    L0Segment *curSegment=FindSegment(mRoot,global,pos);
 
     bool overflow=curSegment->mBitCount+ammount>curSegment->mMaxBitCount;
     uint64_t carry;
@@ -181,6 +214,8 @@ namespace Succinct{
     mBitCount+=ammount;
 
     mRevision++;
+
+    CacheAssign(c,global,pos,curSegment);
   }
 
   uint64_t Sparse::Remove(uint64_t pos,size_t ammount){

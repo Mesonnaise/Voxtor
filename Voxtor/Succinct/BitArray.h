@@ -28,7 +28,6 @@ namespace Succinct{
     static const uint64_t mBlockSize=64;
 
     static uint64_t RequiredSize(uint64_t count);
-
     //BitArray works on 512bit block size
     BitArray(uint64_t *baseAddr,uint64_t MaxBits,uint64_t initalBitCount);
     ~BitArray();
