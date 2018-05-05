@@ -444,7 +444,7 @@ namespace Succinct{
     }
 
     size_t newSize=reinterpret_cast<uint64_t>(dstAddr)-
-                   reinterpret_cast<uint64_t>(mBitArrayAddr);
+                   reinterpret_cast<uint64_t>(mBitArrayAddr.load());
 
     newSize=(newSize<<4)-(64-dstBitPos);
     mBitCountDynamic=newSize;
@@ -455,7 +455,7 @@ namespace Succinct{
       *dstAddr++=0x0000000000000000ULL;
 
     size_t usedMaskBits=reinterpret_cast<uint64_t>(maskAddr)-
-                        reinterpret_cast<uint64_t>(mask->mBitArrayAddr)+
+                        reinterpret_cast<uint64_t>(mask->mBitArrayAddr.load())+
                         maskOffset;
 
     mIsCountersDirty=true;
