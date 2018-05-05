@@ -11,9 +11,9 @@
 namespace Succinct{
   class  BitArray{
   protected:
-    uint64_t* const mBaseAddr;
-    const uint64_t  mMaxBitCount;//total bits
-    uint64_t        mBitCount;
+    uint64_t *mBaseAddr;
+    uint64_t  mMaxBitCount;//total bits
+    uint64_t  mBitCount;
 
   protected:
 #pragma optimize("",off)

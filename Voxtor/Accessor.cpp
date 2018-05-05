@@ -2,7 +2,7 @@
 
 
 
-Accessor::Accessor(){
+Accessor::Accessor(Tree *tree){
 }
 
 

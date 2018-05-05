@@ -134,9 +134,9 @@ inline uint64_t ShiftLeft256(uint64_t *baseAddr,const uint64_t *endAddr,uint64_t
     laneCarry=_mm256_permute4x64_epi64(laneCarry,0x93);
 
     //Perform the left bitshift.
-    intermediate=_mm256_slli_epi64(*addrAVX,shift);
+    intermediate=_mm256_slli_epi64(*addrAVX,int(shift));
     //Move the higher order carried bits to fill in the holes created by left bitshift.
-    laneCarry=_mm256_srli_epi64(laneCarry,invShift);
+    laneCarry=_mm256_srli_epi64(laneCarry,int(invShift));
 
     //Place the higher order bits left over from last pass into the lower order hole. 
     intermediate=_mm256_or_si256(intermediate,rolloverCarry);
@@ -150,7 +150,6 @@ inline uint64_t ShiftLeft256(uint64_t *baseAddr,const uint64_t *endAddr,uint64_t
 
   //return the bits left over in rollover carry
   return _mm256_extract_epi64(rolloverCarry,0);
- // return _mm_extract_epi64(_mm256_extractf128_si256(rolloverCarry,0),0);
 }
 
 inline uint64_t ShiftRight256(uint64_t *baseAddr,const uint64_t *endAddr,uint64_t shift,uint64_t carry){
@@ -183,8 +182,8 @@ inline uint64_t ShiftRight256(uint64_t *baseAddr,const uint64_t *endAddr,uint64_
     laneCarry=_mm256_and_si256(*--addrAVX,laneCarryMask);
     laneCarry=_mm256_permute4x64_epi64(laneCarry,0x39);
 
-    intermediate=_mm256_srli_epi64(*addrAVX,shift);
-    laneCarry=_mm256_slli_epi64(laneCarry,invShift);
+    intermediate=_mm256_srli_epi64(*addrAVX,int(shift));
+    laneCarry=_mm256_slli_epi64(laneCarry,int(invShift));
 
     intermediate=_mm256_or_si256(intermediate,rolloverCarry);
     rolloverCarry=_mm256_and_si256(laneCarry,laneToRolloverMask);
@@ -194,7 +193,6 @@ inline uint64_t ShiftRight256(uint64_t *baseAddr,const uint64_t *endAddr,uint64_
   }
 
   return _mm256_extract_epi64(rolloverCarry,3);
-  //return _mm_extract_epi64(_mm256_extractf128_si256(rolloverCarry,1),1);
 }
 
 inline uint64_t ShiftLeft(uint64_t *baseAddr,uint64_t *endAddr,uint64_t shift,uint64_t carry){
@@ -211,7 +209,7 @@ inline uint64_t ShiftRight(uint64_t *baseAddr,const uint64_t *endAddr,uint64_t s
   return ShiftRight256(AVXStart,endAddr,shift,carry);
 }
 
-//Was going to be used for something, not any more
+
 inline __m256i MaskRight(uint64_t position){
   //Creates a from the LSB to words the MSB in a 256Bit register
   //This treats a 256Bit register as a single scalar
@@ -224,129 +222,143 @@ inline __m256i MaskRight(uint64_t position){
   return _mm256_permutevar8x32_epi32(mask,permutePos);
 }
 
-uint64_t ZeroByteCompact(uint64_t *baseAddr,const uint64_t *addrEnd){
-  //Removes any zero bytes from a buffer/array and 
-  //compacts the remaining bytes to wards lower address (baseAddr)
-  //starting and ending address need to be 256bit aligned
-  __m256i       *addrExtract=   reinterpret_cast<__m256i*>(baseAddr);
-  const __m256i *addrExtractEnd=reinterpret_cast<const __m256i*>(addrEnd);
 
-  uint64_t packed;
-  uint64_t packedSize;
+inline void CopyUnalignedDestination256(uint64_t *dstAddr,uint64_t *srcAddr,uint64_t *srcEnd,uint64_t dstAlignment){
+  //Copies an aligned source buffer into an unaligned location of the destination buffer
+  //Acts like ShiftLeft256
 
-  uint64_t offset=0;
-  uint64_t used=0;
+  __m256i *srcAVX=reinterpret_cast<__m256i*>(srcAddr);
+  __m256i *endAVX=reinterpret_cast<__m256i*>(srcEnd);
+  __m256i *dstAVX=reinterpret_cast<__m256i*>(dstAddr);
 
-  while(addrExtract<addrExtractEnd){
-    __m256i extract=*addrExtract++;
-    //Create the masks needed for pext (Parallel bit extract)
-    //0x00 for zero values and 0xFF for any other value
-    __m256i mask=_mm256_cmpeq_epi8(extract,_mm256_setzero_si256());
-    mask=_mm256_xor_si256(mask,_mm256_set1_epi64x(0xFFFFFFFFFFFFFFFFULL));
+  //Only use the lower 6 bits (values between 0 and 63)
+  uint64_t bitShift=dstAlignment&0x000000000000003FULL;
+  uint64_t bitShiftInv=64-bitShift;
 
-    for(int i=0;i<4;i++){
-      //Extract only set bytes from the first quadword
-      packed=_pext_u64(_mm256_extract_epi64(extract,0),
-                       _mm256_extract_epi64(mask   ,0));
+  //Quadword bitmask
+  __m256i  bitMask=_mm256_set1_epi64x(0xFFFFFFFFFFFFFFFFULL<<bitShift);
 
-      //Rotate the quadwords left by one lane
-      extract=_mm256_permute4x64_epi64(extract,0x39);
-      mask   =_mm256_permute4x64_epi64(mask   ,0x39);
+  //Scalar bit mask, spans the entire register not just the individual lanes
+  __m256i  dstLowerMask=MaskRight(dstAlignment);
+  __m256i  dstUpperMask=_mm256_xor_si256(dstLowerMask,_mm256_set1_epi64x(0xFFFFFFFFFFFFFFFFULL));
 
-      //Count the number of set byte on the quadword
-      packedSize=_lzcnt_u64(packed);
-      packedSize&=0xFFFFFFFFFFFFFFF8ULL;
-      packedSize=64-packedSize;
+  //Calculate the ammount of rotation needed to place the quadwords in the right place
+  //Maps rotl to the offset values needed for _mm256_permutevar8x32_epi32
+  //(dstAlignment/64)*16
+  uint64_t charOffsets=_rotl64(0x0706050403020100,(dstAlignment>>2)&0x0000000000000030ULL);
+  __m256i  dWordOffsets=_mm256_cvtepi8_epi32(_mm_cvtsi64_si128(charOffsets));
 
-      //Insert the now packed quadword into the depositing address and
-      //take care of any miss alignment where depositing would take place across quadword
-      while(packedSize){
-        *baseAddr&=~(0xFFFFFFFFFFFFFFFFULL<<offset);
-        *baseAddr|=packed<<offset;
+  //Insert the existing date from destination that will not be replaced by the copy
+  __m256i  intermediate=_mm256_and_si256(*dstAVX,dstUpperMask);
 
-        used=std::min(packedSize,64-offset);
+  __m256i  aligned;
+  __m256i  laneCarry;
 
-        packedSize-=used;
-        offset=offset+used;
+  if(bitShift==0){
+    while(srcAVX<endAVX){
+      //No per bit alignment is needed 
 
-        baseAddr+=offset>>6;
+      //Perform the word alignment
+      aligned=_mm256_permutevar8x32_epi32(*srcAVX++,dWordOffsets);
 
-        offset&=0x000000000000003FULL;
-        packed>>=used;
-      }
+      //Store the results on the destination
+      intermediate=_mm256_or_si256(intermediate,_mm256_and_si256(aligned,dstLowerMask));
+      _mm256_stream_si256(dstAVX++,intermediate);
+      intermediate=_mm256_and_si256(aligned,dstUpperMask);
+    }
+  }else{
+    while(srcAVX<endAVX){
+      //Perform the bit alignment
+      laneCarry=_mm256_and_si256(*srcAVX,bitMask);
+      laneCarry=_mm256_permute4x64_epi64(laneCarry,0x93);
+
+      aligned=_mm256_slli_epi64(*srcAVX++,int(bitShift));
+      laneCarry=_mm256_srli_epi64(laneCarry,int(bitShiftInv));
+
+      aligned=_mm256_or_si256(aligned,laneCarry);
+
+      //Perform the word alignment
+      aligned=_mm256_permutevar8x32_epi32(aligned,dWordOffsets);
+
+      //Store the results on the destination
+      intermediate=_mm256_or_si256(intermediate,_mm256_and_si256(aligned,dstLowerMask));
+      _mm256_stream_si256(dstAVX++,intermediate);
+      intermediate=_mm256_and_si256(aligned,dstUpperMask);
     }
   }
-  
-  //count how many zero exist at the end of the buffer/array
-  uint64_t zeroCount=8-(offset>>3);
-
-  *baseAddr++&=~(0xFFFFFFFFFFFFFFFFULL<<offset);
-
-  zeroCount+=reinterpret_cast<uint64_t>(addrEnd)-
-             reinterpret_cast<uint64_t>(baseAddr);
-
-  //Fill the remaining quadwords with zeros
-  while(baseAddr<addrEnd)
-    *baseAddr++=0x0000000000000000ULL;
-  return zeroCount;
 }
 
-//It does magic
-uint64_t ExtractByte(uint64_t *baseAddr,const uint64_t *addrEnd,
-                     uint64_t *maskAddr,const uint64_t *maskEnd){
-  uint64_t *extAddr=baseAddr;
 
-  uint64_t mask;
-  uint64_t maskedOffset=0;
+inline void CopyUnalignedSource256(uint64_t *dstAddr,uint64_t *srcAddr,uint64_t *srcEnd,uint64_t srcAlignment){
+  //Copies an unaligned source buffer into an aligned location of the destination buffer
+  //Acts like ShiftRight256
 
-  uint64_t packed;
-  uint64_t packedSize;
+  __m256i *srcAVX=reinterpret_cast<__m256i*>(srcAddr);
+  __m256i *endAVX=reinterpret_cast<__m256i*>(srcEnd);
+  __m256i *dstAVX=reinterpret_cast<__m256i*>(dstAddr);
 
-  uint64_t offset=0;
-  uint64_t used=0;
+  uint64_t bitShift=srcAlignment&0x000000000000003FULL;
+  uint64_t bitShiftInv=64-bitShift;
 
-  while(extAddr<addrEnd&&maskAddr<maskEnd){
-    mask=_pdep_u64(*maskAddr>>maskedOffset,0x0101010101010101ULL);
-    mask*=0x00000000000000FFULL;
+  __m256i  bitMask=_mm256_set1_epi64x(0xFFFFFFFFFFFFFFFFULL>>bitShiftInv);
 
-    maskedOffset+=8;
-    maskAddr+=maskedOffset>>6;
-    maskedOffset&=0x000000000000003FULL;
+  __m256i  dstUpperMask=MaskRight(256-srcAlignment);
+  __m256i  dstLowerMask=_mm256_xor_si256(dstUpperMask,_mm256_set1_epi64x(0xFFFFFFFFFFFFFFFFULL));
 
-    packedSize=__popcnt64(mask);
-    packed=_pext_u64(*extAddr++,mask);
+  uint64_t charOffsets=_rotr64(0x0706050403020100,(srcAlignment>>2)&0x0000000000000030ULL);
+  __m256i  dWordOffsets=_mm256_cvtepi8_epi32(_mm_cvtsi64_si128(charOffsets));
 
-    //Insert the now packed quadword into the depositing address and
-    //take care of any miss alignment where depositing would take place across quadword
-    while(packedSize){
-      *baseAddr&=~(0xFFFFFFFFFFFFFFFFULL<<offset);
-      *baseAddr|=packed<<offset;
+  __m256i  aligned;
+  __m256i  laneCarry;
 
-      used=std::min(packedSize,64-offset);
+  //intermediate needs to be prepacked with the first iteration of the operation
+  //because of the trailing bits will not be occupied on first write otherwise
 
-      packedSize-=used;
-      offset=offset+used;
+  if(bitShift==0){
+    __m256i intermediate=_mm256_permutevar8x32_epi32(*srcAVX++,dWordOffsets);
+    intermediate=_mm256_and_si256(intermediate,dstLowerMask);
 
-      baseAddr+=offset>>6;
+    while(srcAVX<endAVX){
 
-      offset&=0x000000000000003FULL;
-      packed>>=used;
+      //Perform the word alignment
+      aligned=_mm256_permutevar8x32_epi32(*srcAVX++,dWordOffsets);
+
+      intermediate=_mm256_or_si256(intermediate,_mm256_and_si256(aligned,dstUpperMask));
+      _mm256_stream_si256(dstAVX++,intermediate);
+      intermediate=_mm256_and_si256(aligned,dstLowerMask);
     }
+    _mm256_stream_si256(dstAVX,intermediate);
+  }else{
+    laneCarry=_mm256_and_si256(*srcAVX,bitMask);
+    laneCarry=_mm256_permute4x64_epi64(laneCarry,0x39);
+
+    aligned=_mm256_srli_epi64(*srcAVX++,int(bitShift));
+    laneCarry=_mm256_slli_epi64(laneCarry,int(bitShiftInv));
+
+    aligned=_mm256_or_si256(aligned,laneCarry);
+
+    aligned=_mm256_permutevar8x32_epi32(aligned,dWordOffsets);
+
+    __m256i intermediate=_mm256_and_si256(aligned,dstLowerMask);
+
+    while(srcAVX<endAVX){
+      laneCarry=_mm256_and_si256(*srcAVX,bitMask);
+      laneCarry=_mm256_permute4x64_epi64(laneCarry,0x39);
+
+      aligned=_mm256_srli_epi64(*srcAVX++,int(bitShift));
+      laneCarry=_mm256_slli_epi64(laneCarry,int(bitShiftInv));
+
+      aligned=_mm256_or_si256(aligned,laneCarry);
+
+      //Perform the word alignment
+      aligned=_mm256_permutevar8x32_epi32(aligned,dWordOffsets);
+
+      intermediate=_mm256_or_si256(intermediate,_mm256_and_si256(aligned,dstUpperMask));
+      _mm256_stream_si256(dstAVX++,intermediate);
+      intermediate=_mm256_and_si256(aligned,dstLowerMask);
+    }
+    _mm256_stream_si256(dstAVX,intermediate);
   }
-
-  //count how many zero exist at the end of the buffer/array
-  uint64_t zeroCount=8-(offset>>3);
-
-  *baseAddr++&=~(0xFFFFFFFFFFFFFFFFULL<<offset);
-
-  zeroCount+=reinterpret_cast<uint64_t>(addrEnd)-
-    reinterpret_cast<uint64_t>(baseAddr);
-
-  //Fill the remaining quadwords with zeros
-//  while(baseAddr<addrEnd)
-//    *baseAddr++=0x0000000000000000ULL;
-
-  return zeroCount;
 }
 
 //Not worth it for popcounts as short as 64Bytes

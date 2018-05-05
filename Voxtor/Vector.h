@@ -10,6 +10,10 @@ public:
   Vector(uint64_t x,uint64_t y,uint64_t z);
   ~Vector();
 
+  constexpr uint64_t X(){ return mX; }
+  constexpr uint64_t Y(){ return mY; }
+  constexpr uint64_t Z(){ return mZ; }
+
   long double Distance(const Vector &b)const;
 
   Vector operator+(const Vector &b)const;

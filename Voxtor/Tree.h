@@ -1,37 +1,85 @@
 #pragma once
 #include<cinttypes>
 #include<vector>
-#include"Succinct\Sparse.h"
+#include<tuple>
+#include"Succinct\Array.h"
+#include"Vector.h"
 #include"Index.h"
+
 class Tree{
 public:
-  struct Level{
-    uint64_t mPosition;
-    uint64_t mSize;
+  using MapValues=std::vector<uint64_t>;
+
+private:
+  struct StackPosition{
+    uint64_t mOffset;
+    uint64_t mIndex;
+
+    inline operator uint64_t() const{ return mOffset+mIndex; };
   };
-protected:
+
+  using CursorValues=std::vector<StackPosition>;
+  using CursorPair=std::tuple<StackPosition,size_t>;
+
+private:
   bool mIsDense;
-  std::vector<Succinct::Sparse> mStack;
+  std::vector<Succinct::Array> mStack;
+
+  mutable MapValues            mCursorStack;
+  mutable Index                mCursorIndex;
+  mutable uint64_t             mCursorPostion;
+
+protected:
+  CursorPair                   Cursor      ()const;
+  inline void                  CursorRewind()const{ mCursorPostion=0; };
+  void                         CursorClear ()const;
+  inline size_t                CursorSize  ()const{ return mCursorStack.size(); }
+  bool                         CursorPop   ()const;
+
+  CursorPair                   CursorUpdate(Vector vec)const;
+
+  CursorPair                   CursorPrev  ()const;
+  CursorPair                   CursorNext  ()const;
+  
+  CursorPair                   CursorWalk  ()const;
+
 public:
   Tree(size_t depth,bool dense);
   ~Tree();
 
-  bool Empty()const;
-  void Clear();
+  inline size_t                Depth(){ return mStack.size();}
 
-  void Insert(Index &idx);
-  bool Test(Index &idx)const;
+  //In sparse mode the size values are not fix
+  //and can change with inserts
 
-  std::vector<Level> FlattenPosition(Index &idx)const;
+  //Bytes allocated for this tree (bitArray and counters)
+  //Does not include memory needed for classes
+  size_t                       AllocatedSize()const;
+  //Total number of bits available
+  size_t                       ReserveSize()const;
+  //Total number of bits used in the tree
+  size_t                       Size()const;
 
-  //Used to convert dense to sparse or to remove gaps in a sprarse tree
-  void Compact();
+  Vector                       Dimensions()const;
 
-  uint64_t VoxelCount()const;
-  uint64_t NodeCount()const;
+  bool                         Empty()const;
 
-  size_t MemUsage()const;
+  bool                         Get(Vector vec)const;
+  void                         Set(Vector vec);
+  void                         Clear(Vector vec);
 
-  //Iterators Begin and End
+  uint64_t                     NodeCount()const;
+  uint64_t                     LeafCount()const;
+
+  MapValues                    Map(Vector vec)const;
+
+  void                         ToSparse();
+  //Removes the extra unused space from the tree
+  //Usefull for sparse trees
+  void                         Compact();
+
+  //TODO: Next milestone
+  //Prune
+  //Slice
 };
 

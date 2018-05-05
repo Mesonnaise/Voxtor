@@ -6,9 +6,9 @@ public:
   struct Proxy{
   private:
     uint64_t &index;
-    uint8_t pos;
+    size_t pos;
   public:
-    Proxy(uint64_t &i,uint8_t p):index(i),pos(p){}
+    Proxy(uint64_t &i,size_t p):index(i),pos(p){}
     operator const uint8_t()const{
       return (index>>pos)&0x07;
     }
@@ -31,7 +31,9 @@ public:
   size_t IntersectionPoint(const Index &b)const;
   Index Slice(size_t offset,size_t size)const;
 
-  Proxy operator[](unsigned int idx);
+  Vector GetVector()const;
+
+  Proxy operator[](size_t idx);
   bool operator==(const Index &b)const;
   
 };

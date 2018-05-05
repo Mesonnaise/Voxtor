@@ -1,41 +1,37 @@
 #pragma once
 #include<optional>
-#include"L0Segment.h"
+#include"L0Block.h"
 namespace Succinct{
 
   class Sparse{
   public:
-    static const size_t SegmentAllocationSize=2048;
-
     struct Cache{
-      uint64_t   mSparseOffset=0;//Offset in the whole Sparse Array
-//      uint64_t   mSegmentOffset=0;//Offset in current Segment
-      L0Segment *mSegment=nullptr;
+      uint64_t  mOffset=0;//Offset in the whole Sparse Array
+      L0Block  *mBlock=nullptr;
     };
   protected:
     uint64_t   mRevision=0;
-    L0Segment *mRoot=nullptr;
+    L0Block   *mRoot=nullptr;
     size_t     mSize=0;
     size_t     mBitCount;
-  protected:
-    L0Segment*  AllocateSegment(uint64_t segmentSize,size_t &initalBitCount);//multiples of 64KiB
-    L0Segment*  FindSegment(L0Segment *curSegment,uint64_t &subCount,uint64_t &pos)const;
-    void        Rebuild(L0Segment *curSegment,int64_t newCount);
 
-    inline void CacheAssign(Sparse::Cache *c,uint64_t global,uint64_t pos,L0Segment *segment)const{
+  protected:
+    L0Block*  FindBlock(L0Block *curBlock,uint64_t &subCount,uint64_t &pos)const;
+
+    inline void CacheAssign(Sparse::Cache *c,uint64_t global,uint64_t pos,L0Block *block)const{
       if(c){
-        c->mSparseOffset=global;
+        c->mOffset=global;
 //        c->mSegmentOffset=pos;
-        c->mSegment=segment;
+        c->mBlock=block;
       }
     }
-    inline void CacheVars(Cache *c,uint64_t &global,uint64_t &pos,L0Segment *&segment)const{
+    inline void CacheVars(Cache *c,uint64_t &global,uint64_t &pos,L0Block *&block)const{
       global=0;
-      segment=mRoot;
+      block=mRoot;
 
-      if(c&&pos<c->mSparseOffset){
-        global=c->mSparseOffset;
-        segment=c->mSegment?c->mSegment:segment;
+      if(c&&pos<c->mOffset){
+        global=c->mOffset;
+        block=c->mBlock?c->mBlock:block;
         pos-=global;
       }
     }
@@ -54,12 +50,12 @@ namespace Succinct{
       return mRevision;
     }
     constexpr uint64_t PopCount()const{
-      L0Segment *curSegment=mRoot;
+      L0Block *curBlock=mRoot;
 
-      while(curSegment->mNextSegment)
-        curSegment=curSegment->mNextSegment;
+      while(curBlock->Next())
+        curBlock=curBlock->Next();
 
-      return curSegment->Rank(curSegment->mBitCount-1);
+      return curBlock->PopCount();
     }
 
     uint64_t Rank(uint64_t pos,Cache *c=nullptr)const;
@@ -74,7 +70,7 @@ namespace Succinct{
     uint64_t Remove(uint64_t pos,size_t ammount);
 
 
-    void Extract(const Sparse &maskArray);
+    void Filter(Sparse *mask,uint64_t maskScale);
     //Removes the gaps out of the array
     void Compact();
 

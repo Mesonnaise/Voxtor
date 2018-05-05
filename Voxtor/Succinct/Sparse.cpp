@@ -1,326 +1,223 @@
 #include<algorithm>
+#include<stdexcept>
 #include"Sparse.h"
 #include"Util.h"
-#include<Windows.h>
+//#include<Windows.h>
 namespace Succinct{
-  L0Segment* Sparse::AllocateSegment(uint64_t segmentSize,size_t &initalBitCount){
-    //VirtualAlloc will round up to the next full page
-    //TODO: use L1L2Interleave::mBlockSize
-    
-    size_t L1BlockGroups=(segmentSize*1024)/65472;
-    size_t size=L1BlockGroups*65472;
-    uint64_t maxBits=248*2048;
+  L0Block* Sparse::FindBlock(L0Block *curBlock,uint64_t &subCount,uint64_t &pos)const{
 
-    uint64_t *memSegment=static_cast<uint64_t*>(VirtualAlloc(
-      nullptr,size,MEM_RESERVE|MEM_COMMIT|MEM_64K_PAGES,PAGE_READWRITE));
-
-    if(memSegment==nullptr)
-      return nullptr;
-
-    maxBits*=L1BlockGroups;
-
-    size_t setSize=std::min(initalBitCount,maxBits);
-    initalBitCount-=setSize;
-    
-    L0Segment* segment=new L0Segment(memSegment,size,maxBits,setSize);
-    return segment;
-  }
-
-  L0Segment* Sparse::FindSegment(L0Segment *curSegment,uint64_t &subCount,uint64_t &pos)const{
-
-    while(curSegment!=nullptr&&curSegment->mBitCount<pos){
-      subCount+=curSegment->mBitCount;
-      pos-=curSegment->mBitCount;
-      curSegment=curSegment->mNextSegment;
+    while(curBlock!=nullptr&&curBlock->Size()<pos){
+      subCount+=curBlock->Size();
+      pos-=curBlock->Size();
+      curBlock=curBlock->Next();
     }
 
-    return curSegment;
-  }
-
-  void Sparse::Rebuild(L0Segment *curSegment,int64_t newCount){
-    int64_t L0Delta=0;
-
-    if(curSegment->mNextSegment){
-      newCount+=curSegment->mL0Counter;
-      curSegment=curSegment->mNextSegment;
-
-      L0Delta=newCount-curSegment->mL0Counter;
-      curSegment->mL0Counter=newCount;
-
-      curSegment=curSegment->mNextSegment;
-      while(curSegment){
-        curSegment->mL0Counter+=L0Delta;
-        curSegment=curSegment->mNextSegment;
-      }
-    }
+    return curBlock;
   }
 
   Sparse::Sparse(size_t initialSize):mBitCount(initialSize){
-    mRoot=AllocateSegment(SegmentAllocationSize,initialSize);//2MiB
-    
-    if(mRoot==nullptr)
-      throw std::runtime_error("Succinct::Sparse: Unable to allocate memory");
+    mRoot=new L0Block(2351104);
 
-    mSize=mRoot->mMaxBitCount;
+    mSize=mRoot->ReserveSize();
 
-    L0Segment *curSegment=mRoot;
+    L0Block *curBlock=mRoot;
+
+    size_t size=std::min(curBlock->ReserveSize(),initialSize);
+    curBlock->Size(size);
+    initialSize-=size;
 
     while(initialSize){
-      auto newSegment=AllocateSegment(SegmentAllocationSize,initialSize);
-      mSize+=newSegment->mMaxBitCount;
-      curSegment->mNextSegment=newSegment;
-      curSegment=newSegment;
+      auto newBlock=new L0Block(2351104);
+      mSize+=newBlock->ReserveSize();
+      curBlock->AppendBlock(newBlock);
+      curBlock=newBlock;
     }
   }
 
   Sparse::~Sparse(){
-    L0Segment *segment=mRoot;
-    while(segment){
-      VirtualFree(segment->mBaseAddr,0,MEM_RELEASE);
-      L0Segment *tmp=segment;
-      segment=segment->mNextSegment;
-      delete tmp;
-    }
+    if(mRoot)
+      delete mRoot;
   }
 
   uint64_t Sparse::Rank(uint64_t pos,Cache *c)const{
-    if(pos>=mBitCount)
+    if(pos>=Size())
       throw std::range_error("Succinct::Sparse::Rank: position exceeds upper bounds of bit array");
 
     uint64_t global;
-    L0Segment *curSegment;
+    L0Block *curBlock;
 
-    CacheVars(c,global,pos,curSegment);
+    CacheVars(c,global,pos,curBlock);
 
-    curSegment=FindSegment(curSegment,global,pos);
+    curBlock=FindBlock(curBlock,global,pos);
 
-    CacheAssign(c,global,pos,curSegment);
+    CacheAssign(c,global,pos,curBlock);
 
-    return curSegment->Rank(pos);
+    return curBlock->Rank(pos);
   }
 
   uint64_t Sparse::Select(uint64_t count)const{
-    L0Segment *tmpSegment=mRoot;
-    L0Segment *curSegment=nullptr;
+    L0Block *curBlock=mRoot;
+    L0Block *resultBlock=nullptr;
 
     uint64_t rollPosition=0;
 
-    while(tmpSegment!=nullptr&&tmpSegment->mL0Counter<count){
-      rollPosition+=tmpSegment->mBitCount;
-      curSegment=tmpSegment;
-      tmpSegment=tmpSegment->mNextSegment;
+    while(curBlock!=nullptr&&curBlock->BaseCounter()<count){
+      rollPosition+=curBlock->Size();
+      resultBlock=curBlock;
+      curBlock=curBlock->Next();
     }
 
-    return rollPosition+curSegment->Select(count);
+    return rollPosition+resultBlock->Select(count);
   }
 
   void Sparse::Set(uint64_t pos,Cache *c){
-    if(pos>=mBitCount)
+    if(pos>=Size())
       throw std::range_error("Succinct::Sparse::Set: position exceeds upper bounds of bit array");
 
     uint64_t global;
-    L0Segment *curSegment;
+    L0Block *curBlock;
 
-    CacheVars(c,global,pos,curSegment);
+    CacheVars(c,global,pos,curBlock);
 
-    curSegment=FindSegment(curSegment,global,pos);
+    curBlock=FindBlock(curBlock,global,pos);
 
-    curSegment->Set(pos);
+    curBlock->Set(pos);
 
     mRevision++;
 
-    CacheAssign(c,global,pos,curSegment);
+    CacheAssign(c,global,pos,curBlock);
   }
 
   void Sparse::Clear(uint64_t pos,Cache *c){
-    if(pos>=mBitCount)
+    if(pos>=Size())
       throw std::range_error("Succinct::Sparse::Clear: position exceeds upper bounds of bit array");
 
     uint64_t global;
-    L0Segment *curSegment;
+    L0Block *curBlock;
 
-    CacheVars(c,global,pos,curSegment);
+    CacheVars(c,global,pos,curBlock);
 
-    curSegment=FindSegment(curSegment,global,pos);
+    curBlock=FindBlock(curBlock,global,pos);
 
-    curSegment->Clear(pos);
+    curBlock->Clear(pos);
 
     mRevision++;
 
-    CacheAssign(c,global,pos,curSegment);
+    CacheAssign(c,global,pos,curBlock);
   }
 
   bool Sparse::Get(uint64_t pos,Cache *c)const{
-    if(pos>=mBitCount)
+    if(pos>=Size())
       throw std::range_error("Succinct::Sparse::Get: position exceeds upper bounds of bit array");
 
     uint64_t global;
-    L0Segment *curSegment;
+    L0Block *curBlock;
 
-    CacheVars(c,global,pos,curSegment);
+    CacheVars(c,global,pos,curBlock);
 
-    L0Segment *curSegment=FindSegment(mRoot,global,pos);
+    L0Block *curBlock=FindBlock(mRoot,global,pos);
 
-    CacheAssign(c,global,pos,curSegment);
+    CacheAssign(c,global,pos,curBlock);
 
-    return curSegment->Get(pos);
+    return curBlock->Get(pos);
   }
 
   void Sparse::Insert(uint64_t pos,size_t ammount,uint64_t value,Cache *c){
-    if(pos>mBitCount)
+    if(pos>Size())
       throw std::range_error("Succinct::Sparse::Insert: position exceeds upper bounds of bit array");
 
     uint64_t global;
-    L0Segment *curSegment;
+    L0Block *curBlock;
 
-    CacheVars(c,global,pos,curSegment);
+    CacheVars(c,global,pos,curBlock);
 
-    L0Segment *curSegment=FindSegment(mRoot,global,pos);
-
-    bool overflow=curSegment->mBitCount+ammount>curSegment->mMaxBitCount;
+    L0Block *curBlock=FindBlock(mRoot,global,pos);
     uint64_t carry;
-    int64_t accumulator;
 
-    std::tie(carry,accumulator)=curSegment->Insert(pos,ammount,value);
+    carry=curBlock->Insert(pos,ammount,value);
 
-    //The ammount of data currently held in the segment plus the new data doesn't fit
-    //Try to fit the extra data in the next segment or create a new one
-    if(overflow){
-      accumulator+=curSegment->mL0Counter;
-
-      auto nextSegment=curSegment->mNextSegment;
-      if(nextSegment==nullptr||nextSegment->mBitCount+ammount>nextSegment->mMaxBitCount){
-        size_t tmpSize=0;
-        auto newSegment=AllocateSegment(SegmentAllocationSize,tmpSize);
-
-        mSize+=newSegment->mMaxBitCount;
-
-        newSegment->mNextSegment=nextSegment;
-        curSegment->mNextSegment=newSegment;
-        nextSegment=newSegment;
+    if(curBlock->Full()){
+      auto nextBlock=curBlock->Next();
+      if((nextBlock->Size()+ammount)<nextBlock->ReserveSize())
+        nextBlock->Insert(0,ammount,carry);
+      else{
+        nextBlock=new L0Block(2351104);
+        nextBlock->Insert(0,ammount,carry);
+        curBlock->AppendBlock(nextBlock);
       }
-
-      //Set the next segment's L0Counter to the previous segments counter,
-      //plus the accumulation of previous segments L1L2 rebuild result
-      nextSegment->mL0Counter=accumulator;
-
-      std::tie(carry,accumulator)=nextSegment->Insert(0,ammount,carry);
-
-      curSegment=nextSegment;
     }
-
-    Rebuild(curSegment,accumulator);
-
-    mBitCount+=ammount;
-
+    
     mRevision++;
 
-    CacheAssign(c,global,pos,curSegment);
+    CacheAssign(c,global,pos,curBlock);
   }
 
   uint64_t Sparse::Remove(uint64_t pos,size_t ammount){
-    if(pos+ammount>mBitCount)
+    if(pos+ammount>Size())
       throw std::range_error("Succinct::Sparse::Remove: position exceeds upper bounds of bit array");
 
-    L0Segment *curSegment=mRoot;
-    L0Segment *lastSegment=mRoot;
+    L0Block *curBlock=mRoot;
+    L0Block *lastSegment=mRoot;
 
-    while(curSegment!=nullptr&&curSegment->mBitCount<pos){
-      pos-=curSegment->mBitCount;
-      lastSegment=curSegment;
-      curSegment=curSegment->mNextSegment;
+    while(curBlock!=nullptr&&curBlock->Size()<pos){
+      pos-=curBlock->Size();
+      lastSegment=curBlock;
+      curBlock=curBlock->Next();
     }
 
-    //carry is the value that has been removed by the operation
-    uint64_t carry;
-    int64_t accumulator;
+    uint64_t carry=curBlock->Remove(pos,ammount);
 
-    std::tie(carry,accumulator)=curSegment->Remove(pos,ammount);
-
-    if(curSegment->mBitCount==0&&lastSegment!=curSegment){
-      lastSegment->mNextSegment=curSegment->mNextSegment;
-
-      VirtualFree(curSegment->mBaseAddr,0,MEM_RELEASE);
-      delete curSegment;
-      
-      curSegment=lastSegment->mNextSegment;
-    }
-
-    Rebuild(curSegment,accumulator);
+    if(curBlock->Empty())
+      delete curBlock;
 
     mRevision++;
 
     return carry;
   }
 
-  void Sparse::Extract(const Sparse &maskArray){
-    L0Segment *curSegment=mRoot;
-    L0Segment *maskSegment=maskArray.mRoot;
+  void Sparse::Filter(Sparse *mask,uint64_t maskScale){
+    L0Block *curBlock=mRoot;
+    L0Block *maskBlock=mask->mRoot;
+    size_t count=0;
 
-    size_t SegmentSize=curSegment->mBitCount>>6;
-
-    uint64_t *addr=nullptr;
-    uint64_t *maskAddr=nullptr;
-
-    while(curSegment&&maskSegment){
-      maskAddr=maskSegment->BitArray::mBaseAddr;
-
-      for(int i=0;i<8;i++){
-        addr=curSegment->BitArray::mBaseAddr;
-
-        uint64_t zeros=ExtractByte(addr,addr+SegmentSize,
-                                   maskAddr,maskAddr+=(SegmentSize>>3));
-
-        curSegment=curSegment->mNextSegment;
+    while(curBlock&&maskBlock){
+      while(curBlock&&count<mask->Size()){
+        count+=curBlock->Filter(maskBlock,count,maskScale);
+        curBlock=curBlock->Next();
       }
-      maskSegment=maskSegment->mNextSegment;
+
+      count=0;
+      maskBlock=maskBlock->Next();
     }
   }
 
   void Sparse::Compact(){
-    L0Segment *curSegment=mRoot;
-    L0Segment *nextSegment=mRoot->mNextSegment;
+    L0Block *curBlock=mRoot;
+    L0Block *donorBlock=curBlock->Next();
 
-    uint64_t L0Accumulator=0;
+    while(donorBlock){
+      curBlock->AppendDonation(donorBlock);
 
-    while(curSegment&&nextSegment){
-      uint64_t delta=curSegment->mMaxBitCount-curSegment->mBitCount;
-      while(delta){
-        size_t remAmmount=std::min(delta,nextSegment->mBitCount);
-
-        uint64_t carry=nextSegment->BitArray::Remove(0,remAmmount);
-        curSegment->BitArray::Insert(curSegment->mBitCount,carry);
-
-        if(nextSegment->mBitCount==0){
-          L0Segment *tmp=nextSegment;
-
-          curSegment->mNextSegment=nextSegment->mNextSegment;
-
-          VirtualFree(tmp->mBaseAddr,0,MEM_RELEASE);
-          delete tmp;
-
-          nextSegment=curSegment->mNextSegment;
-        }
+      if(donorBlock->Empty()){
+        auto next=donorBlock->Next();
+        delete donorBlock;
+        donorBlock=next;
+      }else{
+        curBlock=donorBlock;
+        donorBlock=donorBlock->Next();
       }
-
-      curSegment->mL0Counter=L0Accumulator;
-      L0Accumulator+=curSegment->L1L2Interleave::Rebuild(0);
-
-      curSegment=nextSegment;
-      nextSegment=curSegment->mNextSegment;
     }
-    
   }
 
   size_t Sparse::MemUsage()const{
     size_t total=sizeof(Sparse);
 
-    L0Segment *curSegment=mRoot;
+    L0Block *curBlock=mRoot;
 
-    while(curSegment){
-      total+=sizeof(L0Segment);
-      total+=curSegment->mMemorySegmentSize;
-      curSegment=curSegment->mNextSegment;
+    while(curBlock){
+      total+=sizeof(L0Block);
+      total+=curBlock->AllocatedSize();
+      curBlock=curBlock->Next();
     }
 
     return total;

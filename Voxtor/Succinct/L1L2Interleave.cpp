@@ -80,9 +80,8 @@ namespace Succinct{
     return rollCount;
   }
 
-  L1L2Interleave::L1L2Interleave(uint64_t *baseAddr,uint64_t MaxBits,uint64_t initalBitCount):
-    mBaseAddr(baseAddr),mL1BlockCount((initalBitCount+mBlockSize-1)/mBlockSize),
-    BitArray(baseAddr+((MaxBits+mBlockSize-1)/mBlockSize),MaxBits,initalBitCount){}
+  L1L2Interleave::L1L2Interleave(uint64_t MaxBits,uint64_t initalBitCount):
+    BitArray(MaxBits,initalBitCount){}
 
   L1L2Interleave::~L1L2Interleave(){}
 

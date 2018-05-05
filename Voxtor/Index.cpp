@@ -51,10 +51,19 @@ Index Index::Slice(size_t offset,size_t size)const{
   return Index(mIndex>>(offset*3),size);
 }
 
-Index::Proxy Index::operator[](unsigned int idx){
+Vector Index::GetVector()const{
+  const uint64_t mask=0x1249249249249249ULL;
+  uint64_t x=_pext_u64(mIndex,mask);
+  uint64_t y=_pext_u64(mIndex,mask<<1);
+  uint64_t z=_pext_u64(mIndex,mask<<2);
+  return Vector(x,y,z);
+}
+
+
+Index::Proxy Index::operator[](size_t idx){
   if(idx>=mSize)
     throw new std::range_error("Index out of bound");
-  uint8_t pos=(mSize-(idx+1))*3;
+  size_t pos=(mSize-(idx+1))*3;
   return {mIndex,pos};
 }
 

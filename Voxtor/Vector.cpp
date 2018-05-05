@@ -13,7 +13,7 @@ long double Vector::Distance(const Vector &b)const{
   int64_t x=mX-b.mX;
   int64_t y=mY-b.mY;
   int64_t z=mZ-b.mZ;
-  return std::sqrtl(x*x+y*y+z*z);
+  return std::sqrtl(double(x*x+y*y+z*z));
 }
 
 Vector Vector::operator+(const Vector &b)const{

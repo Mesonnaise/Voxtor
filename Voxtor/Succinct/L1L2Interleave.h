@@ -8,8 +8,8 @@ namespace Succinct{
     static const uint64_t mBlockSize=512;//2048;
 
   protected:
-    uint64_t* const       mBaseAddr;
-    uint64_t              mL1BlockCount;
+    uint64_t *mBaseAddr=nullptr;
+    uint64_t  mL1BlockCount=0;
 
   protected:
     void L2Inc(uint64_t *addr,int pos);
@@ -19,7 +19,7 @@ namespace Succinct{
     uint64_t Rebuild(uint64_t pos);
 
   public:
-    L1L2Interleave(uint64_t *baseAddr,uint64_t MaxBits,uint64_t initalBitCount);
+    L1L2Interleave(uint64_t MaxBits,uint64_t initalBitCount,bool immediate);
     ~L1L2Interleave();
 
     uint64_t Rank(uint64_t pos)const;

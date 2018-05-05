@@ -21,18 +21,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Succinct\BitArray.h">
-      <Filter>Header Files\Succinct</Filter>
-    </ClInclude>
-    <ClInclude Include="Succinct\L0Segment.h">
-      <Filter>Header Files\Succinct</Filter>
-    </ClInclude>
-    <ClInclude Include="Succinct\L1L2Interleave.h">
-      <Filter>Header Files\Succinct</Filter>
-    </ClInclude>
-    <ClInclude Include="Succinct\Sparse.h">
-      <Filter>Header Files\Succinct</Filter>
-    </ClInclude>
     <ClInclude Include="Succinct\Util.h">
       <Filter>Header Files\Succinct</Filter>
     </ClInclude>
@@ -48,17 +36,14 @@
     <ClInclude Include="Accessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Succinct\L0Block.h">
+      <Filter>Header Files\Succinct</Filter>
+    </ClInclude>
+    <ClInclude Include="Succinct\Array.h">
+      <Filter>Header Files\Succinct</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Succinct\BitArray.cpp">
-      <Filter>Source Files\Succinct</Filter>
-    </ClCompile>
-    <ClCompile Include="Succinct\L1L2Interleave.cpp">
-      <Filter>Source Files\Succinct</Filter>
-    </ClCompile>
-    <ClCompile Include="Succinct\Sparse.cpp">
-      <Filter>Source Files\Succinct</Filter>
-    </ClCompile>
     <ClCompile Include="Tree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -70,6 +55,12 @@
     </ClCompile>
     <ClCompile Include="Accessor.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Succinct\L0Block.cpp">
+      <Filter>Source Files\Succinct</Filter>
+    </ClCompile>
+    <ClCompile Include="Succinct\Array.cpp">
+      <Filter>Source Files\Succinct</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -10,8 +10,8 @@ namespace Succinct{
     L0Segment             *mNextSegment=nullptr;
 
   public:
-    L0Segment(uint64_t *baseAddr,size_t size,uint64_t maxBits,uint64_t initalBitCount):
-      L1L2Interleave(baseAddr,maxBits,initalBitCount),mMemorySegmentSize(size){}
+    L0Segment(size_t size,uint64_t maxBits,uint64_t initalBitCount):
+      L1L2Interleave(maxBits,initalBitCount,false),mMemorySegmentSize(size){}
 
     uint64_t Rank(uint64_t pos){
       return mL0Counter+L1L2Interleave::Rank(pos);
@@ -36,7 +36,7 @@ namespace Succinct{
     }
    
     uint64_t PopCount()const{
-      return mL0Counter+L1L2Interleave::PopCount();
+      return mL0Counter;//+L1L2Interleave::PopCount();
     }
   //  void Resize(size_t size,bool RebuildCounters=false);
 

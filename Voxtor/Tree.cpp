@@ -1,151 +1,289 @@
 #include<algorithm>
 #include "Tree.h"
+#include"Succinct\L0Block.h"
 
+Tree::CursorPair Tree::Cursor()const{
+  size_t idx=mCursorStack.size()-1;
 
+  return std::make_tuple(StackPosition{mCursorStack[idx],mCursorIndex[idx]},idx);
+}
+
+void Tree::CursorClear()const{
+  mCursorStack.resize(0);
+  mCursorPostion=0;
+  mCursorIndex=Index(Vector(0,0,0),0);
+}
+
+Tree::CursorPair Tree::CursorUpdate(Vector vec)const{
+  Index newIndex(vec,mStack.size());
+
+  size_t cursorSize=mCursorIndex.IntersectionPoint(newIndex);
+  cursorSize=std::min(cursorSize,mCursorStack.size());
+  cursorSize=std::max(cursorSize,1ULL);
+  mCursorStack.resize(cursorSize);
+
+  mCursorIndex=newIndex;
+
+  mCursorPostion=std::min(mCursorPostion,cursorSize-1ULL);
+
+  return Cursor();
+}
+
+Tree::CursorPair Tree::CursorPrev()const{
+  --mCursorPostion;
+  return Cursor();
+}
+
+Tree::CursorPair Tree::CursorNext()const{
+  ++mCursorPostion;
+  return Cursor();
+}
+
+bool Tree::CursorPop()const{
+  mCursorStack.pop_back();
+
+  mCursorPostion=std::min(mCursorStack.size()-1,mCursorPostion);
+
+  return mCursorStack.size()!=0;
+}
+
+Tree::CursorPair Tree::CursorWalk()const{
+  uint64_t offset=mCursorStack.back();
+  size_t idx=mCursorStack.size()-1;
+
+  if(mIsDense){
+    for(;idx<mCursorIndex.Size()-1;idx++){
+      offset+=mCursorIndex[idx];
+
+      if(!mStack[idx].Get(offset))
+        break;
+
+      offset*=8ULL;
+      mCursorStack.push_back(offset);
+
+      mCursorPostion++;
+    }
+  }else{
+    for(;idx<mCursorIndex.Size()-1;idx++){
+      offset+=mCursorIndex[idx];
+
+      if(!mStack[idx].Get(offset))
+        break;
+
+      offset=(mStack[idx].Rank(offset)-1ULL)*8ULL;
+      mCursorStack.push_back(offset);
+
+      mCursorPostion++;
+    }
+  }
+
+  return Cursor();
+}
 
 Tree::Tree(size_t depth,bool dense):mIsDense(dense){
   mStack.reserve(depth);
+  mCursorStack.reserve(depth);
 
-  if(mIsDense){
-    uint64_t bitCount=8;
-    while(depth--){
-      mStack.emplace_back(bitCount);
-
-      bitCount<<=3;
-    }
-
-  }else{
-    while(depth--)
-      mStack.emplace_back(0);
-  }
+  for(size_t level=0;level<depth;level++)
+    mStack.emplace_back(level,dense);
+    
+  mCursorStack.push_back(0);
 }
-
 
 Tree::~Tree(){}
 
-void Tree::Insert(Index &idx){
-  size_t max=std::min(idx.Size(),mStack.size());
-  uint64_t offset=0;
+size_t Tree::AllocatedSize()const{
+  size_t size=0;
 
+  for(auto &array:mStack)
+    size+=array.AllocatedSize();
+
+  return size;
+}
+
+size_t Tree::ReserveSize()const{
+  size_t size=0;
+
+  for(auto &array:mStack)
+    size+=array.ReserveSize();
+
+  return size;
+}
+
+size_t Tree::Size()const{
+  size_t size=0;
+
+  for(auto &array:mStack)
+    size+=array.Size();
+
+  return size;
+}
+
+Vector Tree::Dimensions()const{
   if(mIsDense){
-    for(int i=0;i<max;i++){
-      offset+=idx[i];
+    //2^depth-1
+    size_t dim=(2<<(mStack.size()-1));
+    return Vector(dim,dim,dim);
+  }else{
+    //Find index for max value
+    size_t   depth=mStack.size();
+    Index    result(depth);
+    uint64_t lastValue=1;
+    int      idx=0;
 
-      mStack[i].Set(offset);
 
-      offset*=8;
-    }
-  } else{
-    uint64_t pos=0;
-    for(;pos<max;pos++){
-      offset+=idx[pos];
-
-      if(!mStack[pos].Get(offset)){
-        mStack[pos].Set(offset);
-        offset=mStack[pos].Rank(offset)-1;
+    for(;idx<depth;idx++){
+      auto popCount=mStack[idx].PopCount();
+      lastValue=(lastValue-1)*8;
+      //if the popCount of the current level is
+      //less than the position value for the node
+      //The node is considered the leaf
+      if(lastValue>popCount)
         break;
-      }
-      offset=mStack[pos].Rank(offset)-1;
+
+      result[idx]=popCount-lastValue;
+      lastValue=popCount;
     }
 
-    for(++pos;pos<max;pos++){
-      mStack[pos].Insert(offset,8,0x01<<idx[pos]);
-      offset=mStack[pos].Rank(offset+idx[pos])-1;
+    //Finish filling the index up with max values
+    //If the tree has been pruned at this location
+    for(++idx;idx<depth;idx++){
+      result[idx]=7;
     }
+
+    return result.GetVector()+Vector(1,1,1);
   }
 }
 
-bool Tree::Test(Index &idx)const{
-  size_t max=std::min(idx.Size(),mStack.size());
+bool Tree::Empty()const{
+  return mStack[0].Empty();
+}
 
-  uint64_t offset=0;
+bool Tree::Get(Vector vec)const{
+  uint64_t idx;
+  StackPosition pos;
+
+  CursorUpdate(vec);
+  std::tie(pos,idx)=CursorWalk();
+
+  if(idx!=mStack.size()-1)
+    return false;
+
+  return mStack[idx].Get(pos);
+}
+
+void Tree::Set(Vector vec){
+  uint64_t idx;
+  StackPosition pos;
+
+  CursorUpdate(vec);
+  std::tie(pos,idx)=CursorWalk();
+
+  uint64_t offset=pos.mOffset;
 
   if(mIsDense){
-    for(int i=0;i<max;i++){
-      offset+=idx[i];
+    for(;idx<mCursorIndex.Size()-1;idx++){
+      offset+=mCursorIndex[idx];
+      mStack[idx].Set(offset);
 
-      if(!mStack[i].Get(offset))
-        return false;
-      
-      offset*=8;
+      offset*=8ULL;
+      mCursorStack.push_back(offset);
+      mCursorPostion++;
     }
   }else{
-    for(int i=0;i<max;i++){
-      offset+=idx[i];
+    //The root node is always there
+    if(idx==0)
+      mStack[idx].Set(mCursorIndex[idx]);
 
-      if(!mStack[i].Get(offset))
-        return false;
+    for(++idx;idx<mCursorIndex.Size()-1;idx++){
+      mStack[idx].Insert(offset,8,0x0000000000000001ULL<<mCursorIndex[idx]);
 
-      offset=mStack[i].Rank(offset)-1;
+      offset=(mStack[idx].Rank(offset+mCursorIndex[idx])-1ULL)*8ULL;
+      mCursorStack.push_back(offset);
+      mCursorPostion++;
     }
   }
-  return true;
+
+  if(idx<mCursorIndex.Size()){
+    auto t=mCursorIndex[idx]+offset;
+    mStack[idx].Set(t);
+  }
 }
 
-std::vector<Tree::Level> Tree::FlattenPosition(Index &idx)const{
-  size_t max=std::min(idx.Size(),mStack.size());
+void Tree::Clear(Vector vec){
+  uint64_t idx;
+  StackPosition pos;
 
-  uint64_t offset=0;
+  CursorUpdate(vec);
+  CursorWalk();
 
-  std::vector<Tree::Level> levels;
-  levels.reserve(max);
-  
   if(mIsDense){
-    for(size_t i=0;i<max;i++){
-      offset+=idx[i];
-      
-      if(!mStack[i].Get(offset))
-        break;
-
-      levels.push_back({offset,mStack[i].Size()});
-      offset*=8;
-    }
+    do{
+      std::tie(pos,idx)=Cursor();
+      mStack[idx].Clear(pos);
+    }while(CursorPop()&&mStack[idx].GetGroup(pos,8)==0);
   }else{
-    for(size_t i=0;i<max;i++){
-      offset+=idx[i];
+    std::tie(pos,idx)=Cursor();
 
-      if(!mStack[i].Get(offset))
-        break;
+    mStack[idx].Clear(pos);
+    CursorPop();
 
-      levels.push_back({offset,mStack[i].Size()});
-      offset=mStack[i].Rank(offset)-1;
+    while(idx>1&&mStack[idx].GetGroup(pos,8)==0){
+      mStack[idx].Remove(pos,8);
+
+      CursorPop();
+      
+      std::tie(pos,idx)=Cursor();
+      mStack[idx].Clear(pos);
     }
   }
-
-  return levels;
-}
-
-void Tree::Compact(){
-  //This function can be parallelized
-  size_t level=mStack.size()-1;
-  if(mIsDense){
-    while(level){
-      mStack[level].Extract(mStack[level-1]);
-    }
-  }
-
-  for(auto &level:mStack)
-    level.Compact();
-}
-
-uint64_t Tree::VoxelCount()const{
-  return mStack[mStack.size()-1].PopCount();
 }
 
 uint64_t Tree::NodeCount()const{
-  uint64_t count=1;//Root Node
-
-  for(int idx=0;idx<mStack.size()-1;idx++)
+  uint64_t count=0;
+  for(int idx=0;idx<(mStack.size()-1);idx++)
     count+=mStack[idx].PopCount();
 
   return count;
 }
 
-size_t Tree::MemUsage()const{
-  size_t total=sizeof(Tree);
+uint64_t Tree::LeafCount()const{
+  return mStack.back().PopCount();
+}
 
-  for(auto &level:mStack)
-    total+=level.MemUsage();
+Tree::MapValues Tree::Map(Vector vec)const{
+  CursorUpdate(vec);
+  CursorWalk();
 
-  return total;
+  MapValues values;
+
+  for(int idx=0;mCursorStack.size();idx++)
+    values.push_back(mCursorStack[idx]+mCursorIndex[idx]);
+
+  return values;
+}
+
+void Tree::ToSparse(){
+  if(!mIsDense)
+    return;
+
+  for(size_t idx=mStack.size()-1;idx;idx--){
+    mStack[idx].Fixed(false);
+    mStack[idx].Filter(&mStack[idx-1],0,8);
+  }
+
+  Compact();
+
+  mIsDense=false;
+}
+
+void Tree::Compact(){
+  if(mIsDense)
+    return;
+
+  for(int idx=0;idx<mStack.size();idx++){
+    mStack[idx].Fixed(false);
+    mStack[idx].Compact();
+  }
+  CursorClear();
 }

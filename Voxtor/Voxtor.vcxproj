@@ -129,7 +129,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>_MBCS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
@@ -140,10 +140,8 @@
   <ItemGroup>
     <ClInclude Include="Accessor.h" />
     <ClInclude Include="Index.h" />
-    <ClInclude Include="Succinct\BitArray.h" />
-    <ClInclude Include="Succinct\L0Segment.h" />
-    <ClInclude Include="Succinct\L1L2Interleave.h" />
-    <ClInclude Include="Succinct\Sparse.h" />
+    <ClInclude Include="Succinct\Array.h" />
+    <ClInclude Include="Succinct\L0Block.h" />
     <ClInclude Include="Succinct\Util.h" />
     <ClInclude Include="Tree.h" />
     <ClInclude Include="Vector.h" />
@@ -151,9 +149,8 @@
   <ItemGroup>
     <ClCompile Include="Accessor.cpp" />
     <ClCompile Include="Index.cpp" />
-    <ClCompile Include="Succinct\BitArray.cpp" />
-    <ClCompile Include="Succinct\L1L2Interleave.cpp" />
-    <ClCompile Include="Succinct\Sparse.cpp" />
+    <ClCompile Include="Succinct\Array.cpp" />
+    <ClCompile Include="Succinct\L0Block.cpp" />
     <ClCompile Include="Tree.cpp" />
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
