@@ -80,6 +80,6 @@ public:
 
   //TODO: Next milestone
   //Prune
-  //Slice
+  //Tree* Slice(Vector start,Vector end)const;
 };
 

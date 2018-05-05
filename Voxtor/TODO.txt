@@ -3,13 +3,12 @@ Add tree patching/layering
 
 
 Tree
-  Add Voxel count
+  Add Voxel count lowest tile/node or leaf
   Add Accessor for Tree
   Add Iterator
   Add Slice
   Add Reader and Writer
   Add Clear
-  Add Empty
 
 Succinct
-  Allow more flexable memory allocations
+  Make the cursor for Arrays scopeable to avoid calling seek multible times. 

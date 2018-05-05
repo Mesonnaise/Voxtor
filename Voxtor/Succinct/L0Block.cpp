@@ -12,27 +12,26 @@
 
 namespace Succinct{
   void L0Block::Allocate(){
-    uint64_t cmp=reinterpret_cast<uint64_t>(mCountersAddr);
-    uint64_t exg=0x8000000000000000ULL;
-    uint64_t ret;
-
     if(mAllocatedSize)
       return;
 
-    if(cmp==0){
+    uint64_t *cmp=mCountersAddr.load(std::memory_order_acquire);
+    uint64_t *flag=reinterpret_cast<uint64_t*>(0x8000000000000000ULL);
+
+    if(cmp==nullptr){
       //Race to see which thread gets to allocate the memory.
       //Loser spin locks until the 0x8000000000000000ULL flag is cleared.
-      ret=static_cast<uint64_t>(_InterlockedCompareExchange64(
-        reinterpret_cast<int64_t*>(&mCountersAddr),exg,cmp));
 
-      if(ret==cmp){    
+      if(mCountersAddr.compare_exchange_strong(cmp,flag,std::memory_order_seq_cst)){
         uint64_t *tmpPointer=nullptr;
 
-        size_t L1Groups=(mBitCountReserve+mBitsPerL1-1)/mBitsPerL1;
-        size_t L1GroupPad=((L1Groups+3)&0xFFFFFFFFFFFFFFFCULL);
+        size_t L1GroupCount=(mBitCountReserve+mBitsPerL1-1)/mBitsPerL1;
+        size_t allocationSize=(L1GroupCount*mBitsPerL1)/8;
 
-        size_t allocationSize=L1GroupPad*8;;
-        allocationSize+=(L1Groups*mBitsPerL1)/8;
+        //Round up to a multible of 4
+        L1GroupCount=(L1GroupCount+3)&0xFFFFFFFFFFFFFFFCULL;
+
+        allocationSize+=L1GroupCount*8;
         
         if(allocationSize<(16*1024)){
           tmpPointer=static_cast<uint64_t*>(_mm_malloc(allocationSize,32));
@@ -65,15 +64,14 @@ namespace Succinct{
         }
         memset(tmpPointer,0,mAllocatedSize);
 
-        //Pad out the L1 counters to a multable of 4 quadwords
-        mBitArrayAddr=tmpPointer+L1GroupPad;
-        std::atomic_thread_fence(std::memory_order_release);
-        mCountersAddr=tmpPointer;
+
+        mBitArrayAddr.store(tmpPointer+L1GroupCount);
+        mCountersAddr.store(tmpPointer);
         
       }else{
         //Dirty spin-lock
-        while(reinterpret_cast<uint64_t>(mCountersAddr)&0x8000000000000000ULL)
-          std::atomic_thread_fence(std::memory_order_consume);
+        while(flag==mCountersAddr.load(std::memory_order_consume)){}
+
       }
     }
   }
@@ -196,7 +194,9 @@ namespace Succinct{
 
     Rebuild();
 
-    uint64_t L1L2Counter=*(mCountersAddr+(pos/mBitsPerL1));
+    uint64_t *counter=mCountersAddr.load(std::memory_order_relaxed);
+    uint64_t L1L2Counter=*(counter+(pos/mBitsPerL1));
+
     uint64_t rollCount=L1L2Counter&0x00000000FFFFFFFFULL;
 
     L1L2Counter>>=32;
@@ -220,8 +220,9 @@ namespace Succinct{
 
   uint64_t L0Block::Select(uint64_t count){
     Rebuild();
-    uint64_t *L1Addr=mCountersAddr;
-    uint64_t *L1AddrEnd=mCountersAddr+(mBitCountDynamic+(mBitsPerL1-1))/mBitsPerL1;
+
+    uint64_t *L1Addr=mCountersAddr.load(std::memory_order_relaxed);
+    uint64_t *L1AddrEnd=L1Addr+(mBitCountDynamic+(mBitsPerL1-1))/mBitsPerL1;
 
     uint64_t rollposition=0;
 
@@ -240,8 +241,10 @@ namespace Succinct{
       rollposition+=mBitsPerL1/4;
     }
 
-    uint64_t *bitAddr=mBitArrayAddr+(rollposition/64);
-    uint64_t *bitAddrEnd=mBitArrayAddr+(mBitCountDynamic+63)/64;
+    uint64_t *bitAddr=mBitArrayAddr.load(std::memory_order_relaxed);
+    uint64_t *bitAddrEnd=bitAddr+(mBitCountDynamic+63)/64;
+    bitAddr+=(rollposition/64);
+
     uint64_t popcnt=__popcnt64(*bitAddr);
 
     while(count>popcnt&&bitAddr<bitAddrEnd){
@@ -266,8 +269,10 @@ namespace Succinct{
 
     Rebuild();
 
-    uint64_t *addr=mCountersAddr+(pos/mBitsPerL1);
-    uint64_t *addrEnd=mCountersAddr+(mBitCountDynamic+(mBitsPerL1-1))/mBitsPerL1;
+    uint64_t *addr=mCountersAddr.load(std::memory_order_relaxed);
+    uint64_t *addrEnd=addr+(mBitCountDynamic+(mBitsPerL1-1))/mBitsPerL1;
+    addr+=(pos/mBitsPerL1);
+
     uint64_t L2Pos=(pos/(mBitsPerL1/4))&0x0000000000000003ULL;
     int64_t  counter=0x0000000000000001ULL<<(32+L2Pos*10);
 

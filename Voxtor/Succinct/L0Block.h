@@ -19,8 +19,8 @@ namespace Succinct{
     std::atomic<int64_t>   mL0Counter=0;
 
     size_t                 mAllocatedSize=0;//In bytes
-    uint64_t              *mCountersAddr=nullptr;
-    uint64_t              *mBitArrayAddr=nullptr;
+    std::atomic<uint64_t*> mCountersAddr=nullptr;
+    std::atomic<uint64_t*> mBitArrayAddr=nullptr;
 
     const size_t           mBitCountReserve;
     size_t                 mBitCountDynamic=0;
