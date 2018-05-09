@@ -42,6 +42,9 @@
     <ClInclude Include="Succinct\Array.h">
       <Filter>Header Files\Succinct</Filter>
     </ClInclude>
+    <ClInclude Include="Succinct\Cursor.h">
+      <Filter>Header Files\Succinct</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Tree.cpp">

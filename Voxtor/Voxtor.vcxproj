@@ -141,6 +141,7 @@
     <ClInclude Include="Accessor.h" />
     <ClInclude Include="Index.h" />
     <ClInclude Include="Succinct\Array.h" />
+    <ClInclude Include="Succinct\Cursor.h" />
     <ClInclude Include="Succinct\L0Block.h" />
     <ClInclude Include="Succinct\Util.h" />
     <ClInclude Include="Tree.h" />

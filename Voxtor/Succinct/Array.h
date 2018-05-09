@@ -1,5 +1,6 @@
 #pragma once
 #include"L0Block.h"
+#include"Cursor.h"
 namespace Succinct{
   class Array{
   public:
@@ -9,18 +10,19 @@ namespace Succinct{
     L0Block            *mRootBlock;
     size_t              mBlockSize;
 
-    mutable L0Block    *mCursorBlock;
-    mutable uint64_t    mCursorOffset=0;
+    mutable Cursor<L0Block> mCursor;
+    //mutable L0Block    *mCursorBlock;
+   // mutable uint64_t    mCursorOffset=0;
 
     bool                mIsFixed=false;
     mutable bool        mIsValid=false;
 
   protected:
-    constexpr L0Block* Cursor()const{ return mCursorBlock;}
-    L0Block*           CursorReset()const;
-    L0Block*           CursorSeek(uint64_t &pos)const;
-    L0Block*           CursorPrev()const;
-    L0Block*           CursorNext()const;
+  //  constexpr L0Block* Cursor()const{ return mCursorBlock;}
+ //   L0Block*           CursorReset()const;
+  //  L0Block*           CursorSeek(uint64_t &pos)const;
+  //  L0Block*           CursorPrev()const;
+  //  L0Block*           CursorNext()const;
   public:
     Array(uint64_t level,bool dense);
     ~Array();

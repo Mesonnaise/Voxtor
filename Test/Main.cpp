@@ -19,11 +19,8 @@ void threadFunction(Tree *tree,Vector dim,uint64_t min,uint64_t max){
 
 int main(){
 
-  size_t r=sizeof(std::atomic<Tree*>);
 
-
-
-  /*
+  
   Tree tree(8,false);
   auto dim=tree.Dimensions();
 

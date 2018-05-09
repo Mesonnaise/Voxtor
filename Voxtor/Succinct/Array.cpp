@@ -4,6 +4,7 @@
 
 
 namespace Succinct{
+  /*
   L0Block* Array::CursorReset()const{
     mCursorBlock=mRootBlock;
     mCursorOffset=0;
@@ -49,7 +50,7 @@ namespace Succinct{
     mCursorBlock=mCursorBlock->Next();
     return mCursorBlock;
   }
-
+  */
   Array::Array(uint64_t level,bool fixed):mIsFixed(fixed){
     //The maximum size for a L0Block at a known tree level
     //Hand picked, may change in the future
@@ -84,7 +85,8 @@ namespace Succinct{
     }else
       mRootBlock=new L0Block((mBlockSize+L0Block::mBitsPerL1-1)&~(L0Block::mBitsPerL1-1),fixed);
 
-    mCursorBlock=mRootBlock;
+    mCursor=Cursor<L0Block>(mRootBlock);
+  //  mCursorBlock=mRootBlock;
   }
 
   Array::~Array(){
@@ -134,59 +136,66 @@ namespace Succinct{
 
 
   uint64_t Array::Rank(uint64_t pos)const{
-    auto block=CursorSeek(pos);
+    mCursor.Seek(pos);
+    //auto block=CursorSeek(pos);
 
-    return block->Rank(pos);
+    return mCursor->Rank(pos);
   }
 
   uint64_t Array::Select(uint64_t count)const{
-    if(count<Cursor()->BaseCounter()){
-      while(Cursor()&&count<Cursor()->BaseCounter())
-        CursorPrev();
+    if(count<mCursor->BaseCounter()){
+      while(mCursor&&count<mCursor->BaseCounter())
+        mCursor--;
     }else{
-      while(Cursor()&&count>Cursor()->BaseCounter())
-        CursorNext();
+      while(mCursor&&count>mCursor->BaseCounter())
+        mCursor++;
     }
 
-    return mCursorOffset+Cursor()->Select(count);
+    return mCursor.Offset()+mCursor->Select(count);
   }
 
   bool Array::Get(uint64_t pos)const{
-    auto block=CursorSeek(pos);
-    if(!block){
-      mIsValid=false;
+    mCursor.Seek(pos);
+    //auto block=CursorSeek(pos);
+    if(!mCursor){
+      mCursor.Reset();
       throw std::runtime_error("Succinct::Array::Get: pos exceeds the size of the array");
     }
-    return block->Get(pos);
+
+    return mCursor->Get(pos);
   }
 
   void Array::Set(uint64_t pos){
-    auto block=CursorSeek(pos);
-    if(!block){
-      mIsValid=false;
+    mCursor.Seek(pos);
+   // auto block=CursorSeek(pos);
+    if(!mCursor){
+      mCursor.Reset();
       throw std::runtime_error("Succinct::Array::Get: pos exceeds the size of the array");
     }
-    block->Set(pos);
-    block=block->Next();
+
+    mCursor->Set(pos);
   }
 
   void Array::Clear(uint64_t pos){
-    auto block=CursorSeek(pos);
-    block->Clear(pos);
+    mCursor.Seek(pos);
+  //  auto block=CursorSeek(pos);
+    mCursor->Clear(pos);
   }
 
   uint64_t Array::GetGroup(uint64_t pos,size_t size)const{
-    auto block=CursorSeek(pos);
-    if(!block){
-      mIsValid=false;
+    mCursor.Seek(pos);
+    //auto block=CursorSeek(pos);
+    if(!mCursor){
+      mCursor.Reset();
       throw std::runtime_error("Succinct::Array::Get: pos exceeds the size of the array");
     }
-    return block->GetGroup(pos,size);
+
+    return mCursor->GetGroup(pos,size);
   }
 
   uint64_t Array::PopCount()const{
-    L0Block *nextBlock=Cursor();
-    L0Block *block=Cursor();
+    L0Block *nextBlock=mCursor;
+    L0Block *block=mCursor;
 
     while(nextBlock){
       block=nextBlock;
@@ -200,22 +209,24 @@ namespace Succinct{
     if(mIsFixed)
       throw std::runtime_error("Array::Insert: Insert can't be used when array has a fixed size");
 
-    auto block=CursorSeek(pos);
-    if(!block){
+    mCursor.Seek(pos);
+
+   // auto block=CursorSeek(pos);
+    if(!mCursor){
       mIsValid=false;
       throw std::runtime_error("Succinct::Array::Get: pos exceeds the size of the array");
     }
 
-    int64_t overflow=block->Size()+ammount-block->ReserveSize();
+    int64_t overflow=mCursor->Size()+ammount-mCursor->ReserveSize();
 
-    uint64_t carry=block->Insert(pos,ammount,value);
+    uint64_t carry=mCursor->Insert(pos,ammount,value);
   
     if(overflow>0){
-      auto nextBlock=block->Next();
+      auto nextBlock=mCursor->Next();
 
       if(nextBlock==nullptr||(nextBlock->Size()+overflow)<nextBlock->ReserveSize()){
         nextBlock=new L0Block(mBlockAllocateSize,mIsFixed);
-        block->AppendBlock(nextBlock);
+        mCursor->AppendBlock(nextBlock);
       }
       carry=nextBlock->Insert(0,overflow,carry);
     }
@@ -226,14 +237,14 @@ namespace Succinct{
   uint64_t Array::Remove(uint64_t pos,size_t ammount,uint64_t carry){
     if(mIsFixed)
       throw std::runtime_error("Array::Remove: Remove can't be used when array has a fixed size");
-
-    auto block=CursorSeek(pos);
-    if(!block){
+    mCursor.Seek(pos);
+   // auto block=CursorSeek(pos);
+    if(!mCursor){
       mIsValid=false;
       throw std::runtime_error("Succinct::Array::Get: pos exceeds the size of the array");
     }
 
-    uint64_t value=block->Remove(pos,ammount,carry);
+    uint64_t value=mCursor->Remove(pos,ammount,carry);
     return value;
   }
 
@@ -242,19 +253,21 @@ namespace Succinct{
       throw std::runtime_error("Array::Filter: Filter can't be used when array has a fixed size");
 
     //This can be multithreaded
-    auto block=CursorReset();
-    auto maskBlock=mask->CursorReset();
+    mCursor.Reset();
+    mask->mCursor.Reset();
 
     uint64_t offset=0;
     uint64_t total=0;
-    while(block&&maskBlock){
-      auto tmp=block->Filter(maskBlock,offset,maskScale);
+    while(mCursor&&mask->mCursor){
+      auto tmp=mCursor->Filter(mask->mCursor,offset,maskScale);
 
       offset+=tmp;
       total+=tmp;
 
-      if(offset>=maskBlock->Size()){
-        maskBlock=maskBlock->Next();
+      mCursor++;
+
+      if(offset>=mask->mCursor->Size()){
+        mask->mCursor++;
         offset=0;
       }
     }
@@ -266,7 +279,9 @@ namespace Succinct{
     if(mIsFixed)
       throw std::runtime_error("Array::Compact: Compact can't be used when array has a fixed size");
 
-    auto destination=CursorReset();
+    mCursor.Reset();
+
+    L0Block *destination=mCursor;
     auto source=destination->Next();
 
     while(source){
