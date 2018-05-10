@@ -18,7 +18,7 @@ namespace Succinct{
     uint64_t *cmp=mCountersAddr.load(std::memory_order_acquire);
     uint64_t *flag=reinterpret_cast<uint64_t*>(0x8000000000000000ULL);
 
-    if(cmp==nullptr){
+    if(cmp==nullptr||cmp==flag){
       //Race to see which thread gets to allocate the memory.
       //Loser spin locks until the 0x8000000000000000ULL flag is cleared.
 
