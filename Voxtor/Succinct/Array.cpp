@@ -85,7 +85,7 @@ namespace Succinct{
     }else
       mRootBlock=new L0Block((mBlockSize+L0Block::mBitsPerL1-1)&~(L0Block::mBitsPerL1-1),fixed);
 
-    mCursor=Cursor<L0Block>(mRootBlock);
+    mCursor=Cursor(mRootBlock);
   //  mCursorBlock=mRootBlock;
   }
 

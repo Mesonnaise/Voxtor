@@ -2,32 +2,34 @@
 #include<cinttypes>
 #include"L0Block.h"
 namespace Succinct{
-  template<class T>
   class Cursor{
   private:
-    T        *mRoot;
-    T        *mCursor;
-    uint64_t  mOffset=0;
+    const   L0Block  *mRoot;
+    mutable L0Block  *mCursor;
+    mutable uint64_t  mOffset=0;
 
   public:
+    //nullptr constructor is just needed for default setting
+    //the array constructor will set this before its used
     Cursor():mRoot(nullptr),mCursor(nullptr){}
-    Cursor(T *root):mRoot(root),mCursor(root){}
+    Cursor(L0Block *root):mRoot(root),mCursor(root){}
 
-    constexpr uint64_t Offset(){ return mOffset; }
+    constexpr const L0Block* Root()  const{ return mRoot; }
+    constexpr       uint64_t Offset()const{ return mOffset; }
 
-    void Reset(){
-      mCursor=mRoot;
+    inline void Reset()const{
+      mCursor=(L0Block*)mRoot;
       mOffset=0;
     }
 
-    void Reset(bool r){ 
+    inline void Reset(bool r)const{ 
       if(r){
-        mCursor=mRootBlock;
+        mCursor=(L0Block*)mRoot;
         mOffset=0;
       }
     }
 
-     void Seek(uint64_t &pos){
+    inline void Seek(uint64_t &pos)const{
       /*
       while(mCursorBlock&&pos>(mCursorOffset+mCursorBlock->Size())){
         mCursorOffset+=mCursorBlock->Size();
@@ -48,13 +50,13 @@ namespace Succinct{
       pos-=mOffset;
     }
 
-    operator bool(){ return mCursor!=nullptr; }
-    operator T*(){ return mCursor; };
+    inline operator bool()     const{ return mCursor!=nullptr; }
+    inline operator L0Block*() const{ return mCursor; };
 
-    T* operator->(){ return mCursor; }
-    T* operator*(){  return mCursor; }
+    inline L0Block* operator->()const{ return mCursor; }
+    inline L0Block* operator*() const{ return mCursor; }
 
-    Cursor<T> operator++(int){
+    inline Cursor operator++(int)const{
       auto ret=*this;
       mOffset+=mCursor->Size();
       mCursor=mCursor->Next();
@@ -62,7 +64,7 @@ namespace Succinct{
       return ret;
     }
 
-    Cursor<T> operator--(int){
+    inline Cursor operator--(int)const{
       auto ret=*this;
       mCursor=mCursor->Prev();
       mOffset-=mCursor->Size();

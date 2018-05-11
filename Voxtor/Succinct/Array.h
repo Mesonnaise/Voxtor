@@ -10,7 +10,7 @@ namespace Succinct{
     L0Block            *mRootBlock;
     size_t              mBlockSize;
 
-    mutable Cursor<L0Block> mCursor;
+    Cursor              mCursor;
     //mutable L0Block    *mCursorBlock;
    // mutable uint64_t    mCursorOffset=0;
 
@@ -23,9 +23,12 @@ namespace Succinct{
   //  L0Block*           CursorSeek(uint64_t &pos)const;
   //  L0Block*           CursorPrev()const;
   //  L0Block*           CursorNext()const;
+  
   public:
     Array(uint64_t level,bool dense);
     ~Array();
+
+    Array              Instance()const;
 
     constexpr bool     Fixed()const{ return mIsFixed; }
     inline    void     Fixed(bool fixed){ mIsFixed=fixed; }
@@ -35,7 +38,6 @@ namespace Succinct{
     size_t             ReserveSize()const;
 
     size_t             Size()const;
-    void               Size(size_t size);
 
     bool               Empty()const;
 
