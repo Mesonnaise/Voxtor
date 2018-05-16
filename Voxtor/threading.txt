@@ -1,0 +1,24 @@
+Volume Manager
+  provides and manages tree instances
+  tree instance is a pointer
+  does patch/layer merging. 
+
+Tree base
+  array stack 
+
+Tree instance
+  local cursor 
+    the volume manager needs to be able to reset this in all instances
+  pointer to base tree info
+  mutex
+    used by Volume Manager to lock all instances
+
+  layering/patching for local instances
+    each instances has its own local write tree,
+	when read happens in a different instance read all existing trees
+
+  scoped mutex locking
+    require a scope handle to be created when accessing the tree
+	  similar to a transaction
+	  keeps the mutex from being check constantly with each method call
+	  would be non movable

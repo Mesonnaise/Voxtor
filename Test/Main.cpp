@@ -17,10 +17,9 @@ void threadFunction(Tree *tree,Vector dim,uint64_t min,uint64_t max){
   }
 }
 
+
 int main(){
 
-
-  
   Tree tree(8,false);
   auto dim=tree.Dimensions();
 

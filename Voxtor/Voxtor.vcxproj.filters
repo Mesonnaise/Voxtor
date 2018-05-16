@@ -45,6 +45,9 @@
     <ClInclude Include="Succinct\Cursor.h">
       <Filter>Header Files\Succinct</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Tree.cpp">
@@ -68,5 +71,6 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="TODO.txt" />
+    <Text Include="threading.txt" />
   </ItemGroup>
 </Project>
