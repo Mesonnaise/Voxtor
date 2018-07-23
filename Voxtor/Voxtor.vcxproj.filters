@@ -24,9 +24,6 @@
     <ClInclude Include="Succinct\Util.h">
       <Filter>Header Files\Succinct</Filter>
     </ClInclude>
-    <ClInclude Include="Tree.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Index.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -45,14 +42,20 @@
     <ClInclude Include="Succinct\Cursor.h">
       <Filter>Header Files\Succinct</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
+    <ClInclude Include="Tree.old.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TreeCursor.old.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Volume.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Tree.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Index.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

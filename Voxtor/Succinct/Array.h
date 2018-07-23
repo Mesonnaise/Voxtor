@@ -11,24 +11,16 @@ namespace Succinct{
     size_t              mBlockSize;
 
     Cursor              mCursor;
-    //mutable L0Block    *mCursorBlock;
-   // mutable uint64_t    mCursorOffset=0;
 
     bool                mIsFixed=false;
-    mutable bool        mIsValid=false;
+  //  mutable bool        mIsValid=false;
 
   protected:
-  //  constexpr L0Block* Cursor()const{ return mCursorBlock;}
- //   L0Block*           CursorReset()const;
-  //  L0Block*           CursorSeek(uint64_t &pos)const;
-  //  L0Block*           CursorPrev()const;
-  //  L0Block*           CursorNext()const;
+  //  Array(const Array &rh)=default;
   
   public:
     Array(uint64_t level,bool dense);
     ~Array();
-
-    Array              Instance()const;
 
     constexpr bool     Fixed()const{ return mIsFixed; }
     inline    void     Fixed(bool fixed){ mIsFixed=fixed; }

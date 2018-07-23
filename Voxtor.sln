@@ -6,13 +6,13 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Voxtor", "Voxtor\Voxtor.vcxproj", "{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test", "Test\Test.vcxproj", "{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}"
-	ProjectSection(ProjectDependencies) = postProject
-		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8} = {68FD308E-EA0E-4BF5-A02E-0878E8E796E8}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Voxelizer", "Voxelizer\Voxelizer.vcxproj", "{641E7088-BBBE-46FE-8DF6-70E40926E972}"
 EndProject
 Global
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
@@ -24,24 +24,24 @@ Global
 		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}.Debug|x64.Build.0 = Debug|x64
 		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}.Debug|x86.ActiveCfg = Debug|x64
 		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}.Debug|x86.Build.0 = Debug|x64
-		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}.Release|x64.ActiveCfg = Release|x64
-		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}.Release|x64.Build.0 = Release|x64
+		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}.Release|x64.ActiveCfg = Debug|x64
+		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}.Release|x64.Build.0 = Debug|x64
 		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}.Release|x86.ActiveCfg = Debug|x64
 		{68FD308E-EA0E-4BF5-A02E-0878E8E796E8}.Release|x86.Build.0 = Debug|x64
 		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Debug|x64.ActiveCfg = Debug|x64
 		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Debug|x64.Build.0 = Debug|x64
 		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Debug|x86.ActiveCfg = Debug|x64
 		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Debug|x86.Build.0 = Debug|x64
-		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Release|x64.ActiveCfg = Release|x64
-		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Release|x64.Build.0 = Release|x64
+		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Release|x64.ActiveCfg = Debug|x64
+		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Release|x64.Build.0 = Debug|x64
 		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Release|x86.ActiveCfg = Debug|x64
 		{AE2760FB-CDF4-4BDE-B0F9-2324F05ABF4A}.Release|x86.Build.0 = Debug|x64
 		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Debug|x64.ActiveCfg = Debug|x64
 		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Debug|x64.Build.0 = Debug|x64
 		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Debug|x86.ActiveCfg = Debug|Win32
 		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Debug|x86.Build.0 = Debug|Win32
-		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Release|x64.ActiveCfg = Release|x64
-		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Release|x64.Build.0 = Release|x64
+		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Release|x64.ActiveCfg = Debug|x64
+		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Release|x64.Build.0 = Debug|x64
 		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Release|x86.ActiveCfg = Release|Win32
 		{641E7088-BBBE-46FE-8DF6-70E40926E972}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
@@ -50,6 +50,9 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {8497085B-4AB7-4982-9D92-B5027C38E5F2}
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
 	EndGlobalSection
 	GlobalSection(Performance) = preSolution
 		HasPerformanceSessions = true

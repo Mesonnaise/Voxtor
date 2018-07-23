@@ -67,6 +67,12 @@ Index::Proxy Index::operator[](size_t idx){
   return {mIndex,pos};
 }
 
+uint8_t Index::operator[](size_t idx)const{
+  if(idx>=mSize)
+    throw new std::range_error("Index out of bound");
+  return (mIndex>>idx)&0x07;
+}
+
 bool Index::operator==(const Index &b)const{
   return mIndex==b.mIndex&&mSize==b.mSize;
 }

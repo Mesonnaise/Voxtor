@@ -4,53 +4,6 @@
 
 
 namespace Succinct{
-  /*
-  L0Block* Array::CursorReset()const{
-    mCursorBlock=mRootBlock;
-    mCursorOffset=0;
-    return mCursorBlock;
-  }
-
-  L0Block* Array::CursorSeek(uint64_t &pos)const{
-    if(!mIsValid){
-      mCursorBlock=mRootBlock;
-      mCursorOffset=0;
-      mIsValid=true;
-    }
-
-    if(mIsFixed){
-      while(mCursorBlock&&pos>(mCursorOffset+mCursorBlock->Size())){
-        mCursorOffset+=mCursorBlock->Size();
-        mCursorBlock=mCursorBlock->Next();
-      }
-    }else{
-      while(mCursorBlock->Next()&&pos>(mCursorOffset+mCursorBlock->Size())){
-        mCursorOffset+=mCursorBlock->Size();
-        mCursorBlock=mCursorBlock->Next();
-      }
-    }
-    while(pos<mCursorOffset&&mCursorBlock->Prev()){
-      mCursorBlock=mCursorBlock->Prev();
-      mCursorOffset-=mCursorBlock->Size();
-    }
-
-    pos-=mCursorOffset;
-
-    return mCursorBlock;
-  }
-
-  L0Block* Array::CursorPrev()const{
-    mCursorOffset-=mCursorBlock->Size();
-    mCursorBlock=mCursorBlock->Prev();
-    return mCursorBlock;
-  }
-
-  L0Block* Array::CursorNext()const{
-    mCursorOffset+=mCursorBlock->Size();
-    mCursorBlock=mCursorBlock->Next();
-    return mCursorBlock;
-  }
-  */
   Array::Array(uint64_t level,bool fixed):mIsFixed(fixed){
     //The maximum size for a L0Block at a known tree level
     //Hand picked, may change in the future
@@ -211,11 +164,9 @@ namespace Succinct{
 
     mCursor.Seek(pos);
 
-   // auto block=CursorSeek(pos);
-    if(!mCursor){
-      mIsValid=false;
-      throw std::runtime_error("Succinct::Array::Get: pos exceeds the size of the array");
-    }
+    if(!mCursor)
+      throw std::runtime_error("Array::Insert: pos exceeds the size of the array");
+    
 
     int64_t overflow=mCursor->Size()+ammount-mCursor->ReserveSize();
 
@@ -238,11 +189,10 @@ namespace Succinct{
     if(mIsFixed)
       throw std::runtime_error("Array::Remove: Remove can't be used when array has a fixed size");
     mCursor.Seek(pos);
-   // auto block=CursorSeek(pos);
-    if(!mCursor){
-      mIsValid=false;
-      throw std::runtime_error("Succinct::Array::Get: pos exceeds the size of the array");
-    }
+
+    if(!mCursor)
+      throw std::runtime_error("Array::Remove: pos exceeds the size of the array");
+    
 
     uint64_t value=mCursor->Remove(pos,ammount,carry);
     return value;
@@ -303,4 +253,5 @@ namespace Succinct{
   size_t Array::Slice(Array *destination,uint64_t start,uint64_t end){
     return 0;
   }
+
 }

@@ -8,24 +8,26 @@
 //by Dong Zhou, David G. Andersen, Michael Kaminsky
 
 namespace Succinct{
-  class L0Block{
+  __declspec(align(64)) class L0Block{
   public:
     /* IMPORTANT: Bit count must be multible of this number */
     const static size_t    mBitsPerL1=2048;//Divisor
   private:
+    int64_t                mL0Counter=0;
+
     L0Block               *mNextBlock=nullptr;
     L0Block               *mPrevBlock=nullptr;
 
-    std::atomic<int64_t>   mL0Counter=0;
-
-    size_t                 mAllocatedSize=0;//In bytes
+    //These need to be changed to normal pointers 
+    //The overhead of the atomic load out ways the allocators simplification
     std::atomic<uint64_t*> mCountersAddr=nullptr;
     std::atomic<uint64_t*> mBitArrayAddr=nullptr;
 
-    const size_t           mBitCountReserve;
-    size_t                 mBitCountDynamic=0;
+    uint32_t               mAllocatedSize=0;//In bytes
+    const uint32_t         mBitCountReserve;
+    uint32_t               mBitCountDynamic=0;
 
-    uint64_t               mDirtyBitOffset=0;//Don't have to rebuild all the counters unless necessary
+    uint32_t               mDirtyBitOffset=0;//Don't have to rebuild all the counters unless necessary
     
     bool                   mDirectPageAlloc=false;//Did the allocation happen with VirtualAlloc
     bool                   mIsCountersDirty=false;//Indicates if the counters need a rebuild

@@ -285,7 +285,8 @@ namespace Succinct{
 
     auto next=Next();
     while(next){
-      next->mL0Counter++;
+      _InterlockedIncrement64(&next->mL0Counter);
+    //  next->mL0Counter++;
       next=next->Next();
     }
   }
@@ -308,7 +309,8 @@ namespace Succinct{
 
     auto next=Next();
     while(next){
-      next->mL0Counter--;
+      _InterlockedDecrement64(&next->mL0Counter);
+      //next->mL0Counter--;
       next=next->Next();
     }
 
@@ -331,7 +333,7 @@ namespace Succinct{
 
     Allocate();
 
-    mBitCountDynamic=std::min(mBitCountDynamic+ammount,mBitCountReserve);
+    mBitCountDynamic=std::min(mBitCountDynamic+uint32_t(ammount),mBitCountReserve);
 
     uint64_t invSize=64-ammount;
     uint64_t wordOffset=pos/64;
@@ -469,7 +471,7 @@ namespace Succinct{
 
     //size will be the ammount of avilable space in the current block
     //or the ammount of data in the donner, depends on which one is smaller
-    uint64_t size=mBitCountDynamic-mBitCountReserve;
+    uint32_t size=mBitCountDynamic-mBitCountReserve;
     size=std::min(size,donor->mBitCountDynamic);
 
     //mBitCountDynamic is divided by 64 to get quadword offset, 

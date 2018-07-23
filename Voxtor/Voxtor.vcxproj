@@ -140,20 +140,21 @@
   <ItemGroup>
     <ClInclude Include="Accessor.h" />
     <ClInclude Include="Index.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="Succinct\Array.h" />
     <ClInclude Include="Succinct\Cursor.h" />
     <ClInclude Include="Succinct\L0Block.h" />
     <ClInclude Include="Succinct\Util.h" />
     <ClInclude Include="Tree.h" />
+    <ClInclude Include="Tree.old.h" />
+    <ClInclude Include="TreeCursor.old.h" />
     <ClInclude Include="Vector.h" />
+    <ClInclude Include="Volume.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Accessor.cpp" />
     <ClCompile Include="Index.cpp" />
     <ClCompile Include="Succinct\Array.cpp" />
     <ClCompile Include="Succinct\L0Block.cpp" />
-    <ClCompile Include="Tree.cpp" />
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>

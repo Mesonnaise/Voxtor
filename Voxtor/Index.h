@@ -34,6 +34,8 @@ public:
   Vector GetVector()const;
 
   Proxy operator[](size_t idx);
+  uint8_t operator[](size_t idx)const;
+
   bool operator==(const Index &b)const;
   
 };

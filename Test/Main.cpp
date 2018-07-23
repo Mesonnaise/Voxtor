@@ -6,38 +6,40 @@
 #include<malloc.h>
 #include<thread>
 #include<vector>
+#include<iostream>
 #include"Tree.h"
-
-void threadFunction(Tree *tree,Vector dim,uint64_t min,uint64_t max){
-  for(uint64_t z=min;z<max;z++){
-    for(uint64_t y=0;y<dim.Y();y++){
-      for(uint64_t x=0;x<dim.X();x++)
-        tree->Set({x,y,z});
-    }
-  }
-}
-
+#include"Succinct/L0Block.h"
 
 int main(){
+  size_t depth=8;
+  Tree<TREE_DENSE> t(depth);
 
-  Tree tree(8,false);
-  auto dim=tree.Dimensions();
+  uint64_t dim=0x0000000000000001ULL<<(depth);
 
-  for(uint64_t z=0;z<64;z++){
-    for(uint64_t y=0;y<64;y++){
-      for(uint64_t x=0;x<64;x++)
-        tree.Set({x,y,z});
+  for(uint64_t x=0;x<dim;x+=1){
+    for(uint64_t y=0;y<dim;y+=1){
+      for(uint64_t z=0;z<dim;z+=1){
+          t.Set({x,y,z},depth);
+      }
     }
   }
+
   /*
-  std::vector<std::thread> threads;
+  auto f=t.Get({0,0,0},depth);
+  f=t.Get({2,2,2},depth);
 
-  for(uint64_t z=0;z<dim.Z();z+=dim.Z()/16){
-    threads.emplace_back(threadFunction,&tree,dim,z,z+dim.Z());
+
+  for(uint64_t x=0;x<512;x++){
+    for(uint64_t y=0;y<512;y++){
+      for(uint64_t z=0;z<512;z++){
+        auto ret=t.Get({x,y,z},depth);
+
+        if(x%2&&y%2&&z%2&&!ret)
+          std::cout<<"Bad output\n";
+          
+      }
+    }
   }
-
-  for(auto &thread:threads)
-    thread.join();
   */
   return 0;
 }
